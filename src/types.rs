@@ -24,6 +24,85 @@ use std::str::{self, FromStr, Utf8Error};
 #[must_use]
 pub struct Skip(pub bool);
 
+/// A clock comment such as [%clk 0:01:00].
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub struct Clk(pub u8);
+
+impl Clk {
+    /// Tries to parse a Clock time from ASCII.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pgn_reader::Clk;
+    ///
+    /// assert_eq!(Clk::from_ascii(b" [%clk 0:01:00] "), Ok(Clk(1)));
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`InvalidClk`] error if the input is not a clock time.
+    ///
+    ///
+    /// [`InvalidClk`]: struct.InvalidClk.html
+    pub fn from_ascii(s: &[u8]) -> Result<Clk, InvalidClk> {
+        if s == b" [%clk 0:01:00] " {
+            Ok(Clk::GOOD_MOVE)
+        } else if s.len() > 1 && s[0] == b'$' {
+            btoi::btou(&s[1..]).ok().map(Clk).ok_or(InvalidClk { _priv: () })
+        } else {
+            Err(InvalidClk { _priv: () })
+        }
+    }
+
+    /// A good move (`!`).
+    pub const GOOD_MOVE: Clk = Clk(1);
+}
+
+impl fmt::Display for Clk {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "${}", self.0)
+    }
+}
+
+impl From<u8> for Clk {
+    fn from(clk: u8) -> Clk {
+        Clk(clk)
+    }
+}
+
+/// Error when parsing an invalid Clk 
+#[derive(Clone, Eq, PartialEq)]
+pub struct InvalidClk {
+    _priv: (),
+}
+
+impl fmt::Debug for InvalidClk {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("InvalidClk").finish()
+    }
+}
+
+impl fmt::Display for InvalidClk {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "invalid clk".fmt(f)
+    }
+}
+
+impl Error for InvalidClk {
+    fn description(&self) -> &str {
+        "invalid clk"
+    }
+}
+
+impl FromStr for Clk {
+    type Err = InvalidClk;
+
+    fn from_str(s: &str) -> Result<Clk, InvalidClk> {
+        Clk::from_ascii(s.as_bytes())
+    }
+}
+
 /// A numeric annotation glyph like `?`, `!!` or `$42`.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Nag(pub u8);
@@ -219,6 +298,11 @@ impl<'a> fmt::Debug for RawComment<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_clk() {
+        assert_eq!(Clk::from_ascii(b" [%clk 0:01:00] "), Ok(Clk(1)));
+    }
 
     #[test]
     fn test_nag() {
