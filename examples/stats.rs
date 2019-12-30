@@ -15,6 +15,8 @@ struct Stats {
     nags: usize,
     comments: usize,
     variations: usize,
+    timeouts: usize,
+    decisions: usize,
     outcomes: usize,
 }
 
@@ -29,6 +31,9 @@ impl Visitor for Stats {
 
     fn header(&mut self, _key: &[u8], _value: RawHeader<'_>) {
         self.headers += 1;
+        if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
+            self.timeouts += 1;
+        }
     }
 
     fn san(&mut self, _san: SanPlus) {
@@ -49,6 +54,13 @@ impl Visitor for Stats {
 
     fn outcome(&mut self, _outcome: Option<Outcome>) {
         self.outcomes += 1;
+        self.decisions += match _outcome {
+            None => 0,
+            Some(x) => match x.winner() {
+                None => 0,
+                Some(_y) => 1
+            }
+        };
     }
 
     fn end_game(&mut self) {
