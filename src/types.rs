@@ -350,7 +350,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_clk() {
+    fn test_clock() {
         assert_eq!(Clock::from_ascii(b" [%clk 0:00:00] "), Ok(Clock(0)));
         assert_eq!(Clock::from_ascii(b" [%clk 0:01:00] "), Ok(Clock(1)));
     }
