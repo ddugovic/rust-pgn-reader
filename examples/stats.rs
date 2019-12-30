@@ -5,7 +5,7 @@ use std::env;
 use std::io;
 use std::fs::File;
 
-use pgn_reader::{BufferedReader, RawComment, RawHeader, Visitor, SanPlus, Nag, Outcome};
+use pgn_reader::{BufferedReader, RawComment, RawHeader, Visitor, SanPlus, Clock, Nag, Outcome};
 
 #[derive(Debug, Default)]
 struct Stats {
@@ -14,6 +14,7 @@ struct Stats {
     sans: usize,
     nags: usize,
     comments: usize,
+    clocks: usize,
     variations: usize,
     timeouts: usize,
     decisions: usize,
@@ -46,6 +47,9 @@ impl Visitor for Stats {
 
     fn comment(&mut self, _comment: RawComment<'_>) {
         self.comments += 1;
+        if Clock::from_ascii(_comment.as_bytes()) == Ok(Clock(1)) {
+            self.clocks += 1;
+        }
     }
 
     fn end_variation(&mut self) {

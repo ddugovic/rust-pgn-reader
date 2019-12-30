@@ -24,82 +24,88 @@ use std::str::{self, FromStr, Utf8Error};
 #[must_use]
 pub struct Skip(pub bool);
 
-/// A clock comment such as [%clk 0:01:00].
+/// A clock comment such as [%clk 0:00:00].
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct Clk(pub u8);
+pub struct Clock(pub u8);
 
-impl Clk {
+impl Clock {
     /// Tries to parse a Clock time from ASCII.
     ///
     /// # Examples
     ///
     /// ```
-    /// use pgn_reader::Clk;
+    /// use pgn_reader::Clock;
     ///
-    /// assert_eq!(Clk::from_ascii(b" [%clk 0:01:00] "), Ok(Clk(1)));
+    /// assert_eq!(Clock::from_ascii(b" [%clk 0:00:00] "), Ok(Clock(0)));
+    /// assert_eq!(Clock::from_ascii(b" [%clk 0:01:00] "), Ok(Clock(1)));
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`InvalidClk`] error if the input is not a clock time.
+    /// Returns an [`InvalidClock`] error if the input is not a clock time.
     ///
     ///
-    /// [`InvalidClk`]: struct.InvalidClk.html
-    pub fn from_ascii(s: &[u8]) -> Result<Clk, InvalidClk> {
-        if s == b" [%clk 0:01:00] " {
-            Ok(Clk::GOOD_MOVE)
-        } else if s.len() > 1 && s[0] == b'$' {
-            btoi::btou(&s[1..]).ok().map(Clk).ok_or(InvalidClk { _priv: () })
+    /// [`InvalidClock`]: struct.InvalidClock.html
+    pub fn from_ascii(s: &[u8]) -> Result<Clock, InvalidClock> {
+        if s == b" [%clk 0:00:00] " {
+            Ok(Clock::ZERO)
+        } else if s == b" [%clk 0:01:00] " {
+            Ok(Clock::ONE)
+        } else if s.len() > 7 && &s[0..6] == b" [%clk " {
+            btoi::btou(&s[1..]).ok().map(Clock).ok_or(InvalidClock { _priv: () })
         } else {
-            Err(InvalidClk { _priv: () })
+            Err(InvalidClock { _priv: () })
         }
     }
 
-    /// A good move (`!`).
-    pub const GOOD_MOVE: Clk = Clk(1);
+    /// A clock with zero time.
+    pub const ZERO: Clock = Clock(0);
+
+    /// A clock with one time.
+    pub const ONE: Clock = Clock(1);
 }
 
-impl fmt::Display for Clk {
+impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "${}", self.0)
     }
 }
 
-impl From<u8> for Clk {
-    fn from(clk: u8) -> Clk {
-        Clk(clk)
+impl From<u8> for Clock {
+    fn from(clk: u8) -> Clock {
+        Clock(clk)
     }
 }
 
-/// Error when parsing an invalid Clk 
+/// Error when parsing an invalid Clock.
 #[derive(Clone, Eq, PartialEq)]
-pub struct InvalidClk {
+pub struct InvalidClock {
     _priv: (),
 }
 
-impl fmt::Debug for InvalidClk {
+impl fmt::Debug for InvalidClock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("InvalidClk").finish()
+        f.debug_struct("InvalidClock").finish()
     }
 }
 
-impl fmt::Display for InvalidClk {
+impl fmt::Display for InvalidClock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "invalid clk".fmt(f)
     }
 }
 
-impl Error for InvalidClk {
+impl Error for InvalidClock {
     fn description(&self) -> &str {
         "invalid clk"
     }
 }
 
-impl FromStr for Clk {
-    type Err = InvalidClk;
+impl FromStr for Clock {
+    type Err = InvalidClock;
 
-    fn from_str(s: &str) -> Result<Clk, InvalidClk> {
-        Clk::from_ascii(s.as_bytes())
+    fn from_str(s: &str) -> Result<Clock, InvalidClock> {
+        Clock::from_ascii(s.as_bytes())
     }
 }
 
@@ -287,6 +293,50 @@ impl<'a> RawComment<'a> {
     pub fn as_bytes(&self) -> &[u8] {
         self.0
     }
+
+    /// Decodes escaped quotes and backslashes into bytes. Allocates only when
+    /// the value actually contains escape sequences.
+    pub fn decode(&self) -> Cow<'a, [u8]> {
+        let mut comment = 0;
+        let mut decoded: Vec<u8> = Vec::new();
+        for escape in memchr::memchr_iter(b'\\', self.0) {
+            match self.0.get(escape + 1).cloned() {
+                Some(ch) if ch == b'\\' || ch == b'"' => {
+                    decoded.extend_from_slice(&self.0[comment..escape]);
+                    comment = escape + 1;
+                }
+                _ => (),
+            }
+        }
+        if comment == 0 {
+            Cow::Borrowed(self.0)
+        } else {
+            decoded.extend_from_slice(&self.0[comment..]);
+            Cow::Owned(decoded)
+        }
+    }
+
+    /// Tries to decode the comment as UTF-8. This is guaranteed to succeed on
+    /// valid PGNs.
+    ///
+    /// # Errors
+    ///
+    /// Errors if the comment contains an invalid UTF-8 byte sequence.
+    pub fn decode_utf8(&self) -> Result<Cow<'a, str>, Utf8Error> {
+        Ok(match self.decode() {
+            Cow::Borrowed(borrowed) => Cow::Borrowed(str::from_utf8(borrowed)?),
+            Cow::Owned(owned) => Cow::Owned(String::from_utf8(owned).map_err(|e| e.utf8_error())?),
+        })
+    }
+
+    /// Decodes the comment as UTF-8, replacing any invalid byte sequences with
+    /// the placeholder � U+FFFD.
+    pub fn decode_utf8_lossy(&self) -> Cow<'a, str> {
+        match self.decode() {
+            Cow::Borrowed(borrowed) => String::from_utf8_lossy(borrowed),
+            Cow::Owned(owned) => Cow::Owned(String::from_utf8_lossy(&owned).into_owned()),
+        }
+    }
 }
 
 impl<'a> fmt::Debug for RawComment<'a> {
@@ -301,12 +351,25 @@ mod tests {
 
     #[test]
     fn test_clk() {
-        assert_eq!(Clk::from_ascii(b" [%clk 0:01:00] "), Ok(Clk(1)));
+        assert_eq!(Clock::from_ascii(b" [%clk 0:00:00] "), Ok(Clock(0)));
+        assert_eq!(Clock::from_ascii(b" [%clk 0:01:00] "), Ok(Clock(1)));
     }
 
     #[test]
     fn test_nag() {
         assert_eq!(Nag::from_ascii(b"$33"), Ok(Nag(33)));
+    }
+
+    #[test]
+    fn test_raw_comment() {
+        let comment = RawHeader(b"Hello world");
+        assert_eq!(comment.decode().as_ref(), b"Hello world");
+
+        let comment = RawHeader(b"Hello \\world\\");
+        assert_eq!(comment.decode().as_ref(), b"Hello \\world\\");
+
+        let comment = RawHeader(b"\\Hello \\\"world\\\\");
+        assert_eq!(comment.decode().as_ref(), b"\\Hello \"world\\");
     }
 
     #[test]
