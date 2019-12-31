@@ -10,11 +10,8 @@ use pgn_reader::{BufferedReader, RawComment, RawHeader, Visitor, Skip, SanPlus, 
 
 #[derive(Debug, Default)]
 struct Stats {
-    standard: bool,
-    time: u16,
-    increment: u16,
-    games: usize,
     headers: usize,
+    games: usize,
     sans: usize,
     nags: usize,
     comments: usize,
@@ -23,6 +20,9 @@ struct Stats {
     timeouts: usize,
     decisions: usize,
     outcomes: usize,
+    standard: bool,
+    time: u16,
+    increment: u16,
 }
 
 impl Stats {
@@ -41,11 +41,11 @@ impl Visitor for Stats {
     }
 
     fn header(&mut self, _key: &[u8], _value: RawHeader<'_>) {
+        self.headers += 1;
         if _key == b"Variant" {
             self.standard = _value.as_bytes() == b"Standard";
         }
         if self.standard {
-            self.headers += 1;
             if _key == b"TimeControl" {
                 let bytes: &[u8] = _value.as_bytes();
                 if bytes[1] == b'+' {
@@ -59,8 +59,10 @@ impl Visitor for Stats {
                     self.increment = btou(&bytes[4..]).ok().unwrap();
                 }
             }
-            if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
-                self.timeouts += 1;
+            if self.time + 40 * self.increment >= 180 {
+                if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
+                    self.timeouts += 1;
+                }
             }
         }
     }
