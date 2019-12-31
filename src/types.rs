@@ -25,8 +25,8 @@ use std::str::{self, FromStr, Utf8Error};
 #[must_use]
 pub struct Skip(pub bool);
 
-/// A clock comment such as [%clk 0:05:00].
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+/// A clock comment such as [%clk 0:05:00] with default value 0.
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Clock(pub u16);
 
 impl Clock {

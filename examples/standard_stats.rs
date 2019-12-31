@@ -15,7 +15,6 @@ struct Stats {
     sans: usize,
     nags: usize,
     comments: usize,
-    clocks: usize,
     variations: usize,
     timeouts: usize,
     decisions: usize,
@@ -23,6 +22,8 @@ struct Stats {
     standard: bool,
     time: u16,
     increment: u16,
+    clock1: Clock,
+    clock2: Clock,
 }
 
 impl Stats {
@@ -59,6 +60,8 @@ impl Visitor for Stats {
                         self.time = btou(&bytes[0..3]).ok().unwrap();
                         self.increment = btou(&bytes[4..]).ok().unwrap();
                     }
+                    self.clock1 = Clock(self.time);
+                    self.clock2 = Clock(self.time);
                 }
             }
             if self.time + 40 * self.increment >= 180 {
@@ -83,8 +86,13 @@ impl Visitor for Stats {
 
     fn comment(&mut self, _comment: RawComment<'_>) {
         self.comments += 1;
-        if Clock::from_ascii(_comment.as_bytes()).is_ok() {
-            self.clocks += 1;
+        let clock = Clock::from_ascii(_comment.as_bytes());
+        if clock.is_ok() {
+            if self.sans % 2 == 0 {
+                self.clock1 = clock.ok().unwrap_or(Clock::default());
+            } else {
+                self.clock2 = clock.ok().unwrap_or(Clock::default());
+            }
         }
     }
 
