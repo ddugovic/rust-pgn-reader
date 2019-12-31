@@ -122,7 +122,12 @@ impl Visitor for Stats {
         };
         if self.timeout {
             let t: u16 = (self.time + 40 * self.increment) / 12;
-            println!("{}+{} (t={}): wtime={} btime={} wlast={} blast={}", self.time/60, self.increment, t, self.wclock.0, self.bclock.0, self.wlast, self.blast);
+            let x: bool = if self.turns % 2 == 0 {
+                t < self.wclock.0 || t < self.wlast
+            } else {
+                t < self.bclock.0 || t < self.blast
+            };
+            println!("{}+{} (t={}):\twtime={} wlast={}\tbtime={} blast={}\tslow={}", self.time/60, self.increment, t, self.wclock.0, self.wlast, self.bclock.0, self.blast, x);
         }
     }
 
