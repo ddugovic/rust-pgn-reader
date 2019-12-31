@@ -122,13 +122,8 @@ impl Visitor for Stats {
             }
         };
         if self.timeout {
-            if self.turns % 2 == 0 {
-                self.wmax = cmp::max(self.wmax, self.wclock.0);
-            } else {
-                self.bmax = cmp::max(self.bmax, self.bclock.0);
-            }
             let t: u16 = (self.time + 40 * self.increment) / 12;
-            println!("{}+{} (t={}): wmax={} bmax={}", self.time, self.increment, t, self.wmax, self.bmax);
+            println!("{}+{} (t={}): wtime={} btime={} wmax={} bmax={}", self.time, self.increment, t, self.wclock.0, self.bclock.0, self.wmax, self.bmax);
         }
     }
 
