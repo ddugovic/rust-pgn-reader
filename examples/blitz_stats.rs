@@ -91,7 +91,7 @@ impl Visitor for Stats {
         self.comments += 1;
         let clock = Clock::from_ascii(_comment.as_bytes());
         if clock.is_ok() {
-            if self.turns % 2 == 0 {
+            if self.turns % 2 == 1 {
                 let t = self.wclock.0 + self.increment;
                 self.wclock = clock.ok().unwrap_or(Clock::default());
                 if t > self.wclock.0 {
@@ -127,7 +127,7 @@ impl Visitor for Stats {
             } else {
                 t < self.bclock.0 || t < self.blast
             };
-            println!("{}+{} (t={}):\twtime={} wlast={}\tbtime={} blast={}\tslow={}", self.time/60, self.increment, t, self.wclock.0, self.wlast, self.bclock.0, self.blast, x);
+            println!("{:2}+{:2} (t={:2}):  wtime={:5} wlast={:3}  btime={:5} blast={:3}  slow={} turns={}", self.time/60, self.increment, t, self.wclock.0, self.wlast, self.bclock.0, self.blast, x, self.turns);
         }
     }
 
