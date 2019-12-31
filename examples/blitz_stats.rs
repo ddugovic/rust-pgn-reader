@@ -1,7 +1,6 @@
 // Counts non-bullet games, moves and other tokens in PGNs.
 // Usage: cargo run --release --example stats -- [PGN]...
 
-use std::cmp;
 use std::env;
 use std::io;
 use std::fs::File;
@@ -25,8 +24,8 @@ struct Stats {
     turns: u16,
     wclock: Clock,
     bclock: Clock,
-    wmax: u16,
-    bmax: u16,
+    wlast: u16,
+    blast: u16,
     timeout: bool,
 }
 
@@ -45,8 +44,8 @@ impl Visitor for Stats {
         self.increment = 0;
         self.wclock = Clock(0);
         self.bclock = Clock(0);
-        self.wmax = 0;
-        self.bmax = 0;
+        self.wlast = 0;
+        self.blast = 0;
         self.timeout = false;
     }
 
@@ -96,13 +95,13 @@ impl Visitor for Stats {
                 let t = self.wclock.0 + self.increment;
                 self.wclock = clock.ok().unwrap_or(Clock::default());
                 if t > self.wclock.0 {
-                    self.wmax = cmp::max(self.wmax, t - self.wclock.0);
+                    self.wlast = t - self.wclock.0;
                 }
             } else {
                 let t = self.bclock.0 + self.increment;
                 self.bclock = clock.ok().unwrap_or(Clock::default());
                 if t > self.bclock.0 {
-                    self.bmax = cmp::max(self.bmax, t - self.bclock.0);
+                    self.blast = t - self.bclock.0;
                 }
             }
         }
@@ -123,7 +122,7 @@ impl Visitor for Stats {
         };
         if self.timeout {
             let t: u16 = (self.time + 40 * self.increment) / 12;
-            println!("{}+{} (t={}): wtime={} btime={} wmax={} bmax={}", self.time/60, self.increment, t, self.wclock.0, self.bclock.0, self.wmax, self.bmax);
+            println!("{}+{} (t={}): wtime={} btime={} wlast={} blast={}", self.time/60, self.increment, t, self.wclock.0, self.bclock.0, self.wlast, self.blast);
         }
     }
 
