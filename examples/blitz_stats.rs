@@ -95,11 +95,15 @@ impl Visitor for Stats {
             if self.turns % 2 == 0 {
                 let t = self.wclock.0 + self.increment;
                 self.wclock = clock.ok().unwrap_or(Clock::default());
-                self.wmax = cmp::max(self.wmax, t - self.wclock.0);
+                if t > self.wclock.0 {
+                    self.wmax = cmp::max(self.wmax, t - self.wclock.0);
+                }
             } else {
                 let t = self.bclock.0 + self.increment;
                 self.bclock = clock.ok().unwrap_or(Clock::default());
-                self.bmax = cmp::max(self.bmax, t - self.bclock.0);
+                if t > self.bclock.0 {
+                    self.bmax = cmp::max(self.bmax, t - self.bclock.0);
+                }
             }
         }
     }
