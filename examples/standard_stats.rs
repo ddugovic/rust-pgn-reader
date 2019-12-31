@@ -49,13 +49,13 @@ impl Visitor for Stats {
             if _key == b"TimeControl" {
                 let bytes: &[u8] = _value.as_bytes();
                 if bytes[1] == b'+' {
-                    self.time = 60 * btou::<u16>(&bytes[0..1]).ok().unwrap();
+                    self.time = btou(&bytes[0..1]).ok().unwrap();
                     self.increment = btou(&bytes[2..]).ok().unwrap();
                 } else if bytes[2] == b'+' {
-                    self.time = 60 * btou::<u16>(&bytes[0..2]).ok().unwrap();
+                    self.time = btou(&bytes[0..2]).ok().unwrap();
                     self.increment = btou(&bytes[3..]).ok().unwrap();
                 } else {
-                    self.time = 60 * btou::<u16>(&bytes[0..3]).ok().unwrap();
+                    self.time = btou(&bytes[0..3]).ok().unwrap();
                     self.increment = btou(&bytes[4..]).ok().unwrap();
                 }
             }
