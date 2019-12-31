@@ -43,6 +43,8 @@ impl Visitor for Stats {
         self.turns = 0;
         self.time = 0;
         self.increment = 0;
+        self.wclock = Clock(0);
+        self.bclock = Clock(0);
         self.wmax = 0;
         self.bmax = 0;
         self.timeout = false;
@@ -63,8 +65,6 @@ impl Visitor for Stats {
                     self.time = btou(&bytes[0..3]).ok().unwrap();
                     self.increment = btou(&bytes[4..]).ok().unwrap();
                 }
-                self.wclock = Clock(self.time);
-                self.bclock = Clock(self.time);
             }
         }
         if self.time + 40 * self.increment >= 180 {
