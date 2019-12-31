@@ -5,11 +5,14 @@ use std::env;
 use std::io;
 use std::fs::File;
 
+use btoi::btou;
 use pgn_reader::{BufferedReader, RawComment, RawHeader, Visitor, Skip, SanPlus, Clock, Nag, Outcome};
 
 #[derive(Debug, Default)]
 struct Stats {
     classical: bool,
+    time: u16,
+    increment: u8,
     games: usize,
     headers: usize,
     sans: usize,
@@ -33,6 +36,8 @@ impl Visitor for Stats {
 
     fn begin_game(&mut self) {
         self.classical = false;
+        self.time = 0;
+        self.increment = 0;
     }
 
     fn header(&mut self, _key: &[u8], _value: RawHeader<'_>) {
@@ -41,6 +46,16 @@ impl Visitor for Stats {
         }
         if self.classical {
             self.headers += 1;
+            if _key == b"TimeControl" {
+                let bytes: &[u8] = _value.as_bytes();
+                if bytes[3] == b'+' {
+                    self.time = 60 * btou::<u16>(&bytes[0..3]).ok().unwrap();
+                    self.increment = btou(&bytes[4..]).ok().unwrap();
+                } else {
+                    self.time = 60 * btou::<u16>(&bytes[0..2]).ok().unwrap();
+                    self.increment = btou(&bytes[3..]).ok().unwrap();
+                }
+            }
             if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
                 self.timeouts += 1;
             }
