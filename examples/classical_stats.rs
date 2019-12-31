@@ -61,7 +61,7 @@ impl Visitor for Stats {
 
     fn comment(&mut self, _comment: RawComment<'_>) {
         self.comments += 1;
-        if Clock::from_ascii(_comment.as_bytes()) == Ok(Clock(1)) {
+        if Clock::from_ascii(_comment.as_bytes()) == Ok(Clock(0)) {
             self.clocks += 1;
         }
     }
