@@ -35,7 +35,7 @@ impl Visitor for Stats {
     type Result = ();
 
     fn begin_game(&mut self) {
-        self.standard = false;
+        self.standard = true;
         self.time = 0;
         self.increment = 0;
     }
