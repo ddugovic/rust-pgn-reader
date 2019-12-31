@@ -1,4 +1,4 @@
-// Counts classical games, moves and other tokens in PGNs.
+// Counts standard games, moves and other tokens in PGNs.
 // Usage: cargo run --release --example stats -- [PGN]...
 
 use std::env;
@@ -10,9 +10,9 @@ use pgn_reader::{BufferedReader, RawComment, RawHeader, Visitor, Skip, SanPlus, 
 
 #[derive(Debug, Default)]
 struct Stats {
-    classical: bool,
+    standard: bool,
     time: u16,
-    increment: u8,
+    increment: u16,
     games: usize,
     headers: usize,
     sans: usize,
@@ -35,25 +35,28 @@ impl Visitor for Stats {
     type Result = ();
 
     fn begin_game(&mut self) {
-        self.classical = false;
+        self.standard = false;
         self.time = 0;
         self.increment = 0;
     }
 
     fn header(&mut self, _key: &[u8], _value: RawHeader<'_>) {
-        if _key == b"Event" {
-            self.classical = _value.as_bytes() == b"Rated Classical game";
+        if _key == b"Variant" {
+            self.standard = _value.as_bytes() == b"Standard";
         }
-        if self.classical {
+        if self.standard {
             self.headers += 1;
             if _key == b"TimeControl" {
                 let bytes: &[u8] = _value.as_bytes();
                 if bytes[3] == b'+' {
                     self.time = 60 * btou::<u16>(&bytes[0..3]).ok().unwrap();
                     self.increment = btou(&bytes[4..]).ok().unwrap();
-                } else {
+                } else if bytes[2] == b'+' {
                     self.time = 60 * btou::<u16>(&bytes[0..2]).ok().unwrap();
                     self.increment = btou(&bytes[3..]).ok().unwrap();
+                } else {
+                    self.time = 60 * btou::<u16>(&bytes[0..1]).ok().unwrap();
+                    self.increment = btou(&bytes[2..]).ok().unwrap();
                 }
             }
             if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
@@ -63,7 +66,7 @@ impl Visitor for Stats {
     }
 
     fn end_headers(&mut self) -> Skip {
-        Skip(!self.classical)
+        Skip((self.time + 40 * self.increment) < 180 || !self.standard)
     }
 
     fn san(&mut self, _san: SanPlus) {
@@ -97,7 +100,7 @@ impl Visitor for Stats {
     }
 
     fn end_game(&mut self) {
-        if self.classical {
+        if self.time + 40 * self.increment >= 180 && self.standard {
             self.games += 1;
         }
     }
