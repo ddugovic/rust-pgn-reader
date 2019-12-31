@@ -123,7 +123,7 @@ impl Visitor for Stats {
         };
         if self.timeout {
             let t: u16 = (self.time + 40 * self.increment) / 12;
-            println!("{}+{} (t={}): wtime={} btime={} wmax={} bmax={}", self.time, self.increment, t, self.wclock.0, self.bclock.0, self.wmax, self.bmax);
+            println!("{}+{} (t={}): wtime={} btime={} wmax={} bmax={}", self.time/60, self.increment, t, self.wclock.0, self.bclock.0, self.wmax, self.bmax);
         }
     }
 
