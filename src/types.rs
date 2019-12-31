@@ -25,19 +25,19 @@ use std::str::{self, FromStr, Utf8Error};
 #[must_use]
 pub struct Skip(pub bool);
 
-/// A clock comment such as [%clk 0:01:00].
+/// A clock comment such as [%clk 0:05:00].
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Clock(pub u16);
 
 impl Clock {
-    /// Tries to parse a Clock time from ASCII.
+    /// Tries to parse a Clock time (less than 10 hours) from ASCII.
     ///
     /// # Examples
     ///
     /// ```
     /// use pgn_reader::Clock;
     ///
-    /// assert_eq!(Clock::from_ascii(b" [%clk 0:01:00] "), Ok(Clock(60)));
+    /// assert_eq!(Clock::from_ascii(b" [%clk 1:01:01] "), Ok(Clock(3661)));
     /// ```
     ///
     /// # Errors
@@ -48,13 +48,13 @@ impl Clock {
     /// [`InvalidClock`]: struct.InvalidClock.html
     pub fn from_ascii(s: &[u8]) -> Result<Clock, InvalidClock> {
         if &s[0..7] == b" [%clk " {
-            btou::<u16>(&s[9..11]).ok().map(|m| Clock(60 * m)).ok_or(InvalidClock { _priv: () })
+            let minutes: u16 = 60 * btou::<u16>(&s[7..8]).ok().unwrap() +
+                                    btou::<u16>(&s[9..11]).ok().unwrap();
+            btou::<u16>(&s[12..14]).ok().map(|s| Clock(60 * minutes + s)).ok_or(InvalidClock { _priv: () })
         } else {
             Err(InvalidClock { _priv: () })
         }
     }
-
-    pub const ZERO: Clock = Clock(0);
 }
 
 impl fmt::Display for Clock {
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_clock() {
-        assert_eq!(Clock::from_ascii(b" [%clk 0:01:00] "), Ok(Clock(60)));
+        assert_eq!(Clock::from_ascii(b" [%clk 1:01:01] "), Ok(Clock(3661)));
     }
 
     #[test]
