@@ -1,6 +1,7 @@
-// Counts standard games, moves and other tokens in PGNs.
+// Counts non-bullet games, moves and other tokens in PGNs.
 // Usage: cargo run --release --example stats -- [PGN]...
 
+use std::cmp;
 use std::env;
 use std::io;
 use std::fs::File;
@@ -19,11 +20,14 @@ struct Stats {
     timeouts: usize,
     decisions: usize,
     outcomes: usize,
-    standard: bool,
     time: u16,
     increment: u16,
-    clock1: Clock,
-    clock2: Clock,
+    turns: u16,
+    wclock: Clock,
+    bclock: Clock,
+    wmax: u16,
+    bmax: u16,
+    timeout: bool,
 }
 
 impl Stats {
@@ -36,48 +40,48 @@ impl Visitor for Stats {
     type Result = ();
 
     fn begin_game(&mut self) {
-        self.standard = true;
+        self.turns = 0;
         self.time = 0;
         self.increment = 0;
+        self.wmax = 0;
+        self.bmax = 0;
+        self.timeout = false;
     }
 
     fn header(&mut self, _key: &[u8], _value: RawHeader<'_>) {
         self.headers += 1;
-        if _key == b"Variant" {
-            self.standard = _value.as_bytes() == b"Standard";
-        }
-        if self.standard {
-            if _key == b"TimeControl" {
-                let bytes: &[u8] = _value.as_bytes();
-                if bytes.len() > 1 {
-                    if bytes[1] == b'+' {
-                        self.time = btou(&bytes[0..1]).ok().unwrap();
-                        self.increment = btou(&bytes[2..]).ok().unwrap();
-                    } else if bytes[2] == b'+' {
-                        self.time = btou(&bytes[0..2]).ok().unwrap();
-                        self.increment = btou(&bytes[3..]).ok().unwrap();
-                    } else if bytes[3] == b'+' {
-                        self.time = btou(&bytes[0..3]).ok().unwrap();
-                        self.increment = btou(&bytes[4..]).ok().unwrap();
-                    }
-                    self.clock1 = Clock(self.time);
-                    self.clock2 = Clock(self.time);
+        if _key == b"TimeControl" {
+            let bytes: &[u8] = _value.as_bytes();
+            if bytes.len() > 1 {
+                if bytes[1] == b'+' {
+                    self.time = btou(&bytes[0..1]).ok().unwrap();
+                    self.increment = btou(&bytes[2..]).ok().unwrap();
+                } else if bytes[2] == b'+' {
+                    self.time = btou(&bytes[0..2]).ok().unwrap();
+                    self.increment = btou(&bytes[3..]).ok().unwrap();
+                } else if bytes[3] == b'+' {
+                    self.time = btou(&bytes[0..3]).ok().unwrap();
+                    self.increment = btou(&bytes[4..]).ok().unwrap();
                 }
+                self.wclock = Clock(self.time);
+                self.bclock = Clock(self.time);
             }
-            if self.time + 40 * self.increment >= 180 {
-                if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
-                    self.timeouts += 1;
-                }
+        }
+        if self.time + 40 * self.increment >= 180 {
+            if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
+                self.timeout = true;
+                self.timeouts += 1;
             }
         }
     }
 
     fn end_headers(&mut self) -> Skip {
-        Skip((self.time + 40 * self.increment) < 180 || !self.standard)
+        Skip((self.time + 40 * self.increment) < 180 || !self.timeout)
     }
 
     fn san(&mut self, _san: SanPlus) {
         self.sans += 1;
+        self.turns += 1;
     }
 
     fn nag(&mut self, _nag: Nag) {
@@ -88,10 +92,14 @@ impl Visitor for Stats {
         self.comments += 1;
         let clock = Clock::from_ascii(_comment.as_bytes());
         if clock.is_ok() {
-            if self.sans % 2 == 0 {
-                self.clock1 = clock.ok().unwrap_or(Clock::default());
+            if self.turns % 2 == 0 {
+                let t = self.wclock.0 + self.increment;
+                self.wclock = clock.ok().unwrap_or(Clock::default());
+                self.wmax = cmp::max(self.wmax, t - self.wclock.0);
             } else {
-                self.clock2 = clock.ok().unwrap_or(Clock::default());
+                let t = self.bclock.0 + self.increment;
+                self.bclock = clock.ok().unwrap_or(Clock::default());
+                self.bmax = cmp::max(self.bmax, t - self.bclock.0);
             }
         }
     }
@@ -109,10 +117,18 @@ impl Visitor for Stats {
                 Some(_y) => 1
             }
         };
+        if self.timeout {
+            if self.turns % 2 == 0 {
+                self.wmax = cmp::max(self.wmax, self.wclock.0);
+            } else {
+                self.bmax = cmp::max(self.bmax, self.bclock.0);
+            }
+            println!("{}+{}: {} {}", self.time, self.increment, self.wmax, self.bmax);
+        }
     }
 
     fn end_game(&mut self) {
-        if self.time + 40 * self.increment >= 180 && self.standard {
+        if self.time + 40 * self.increment >= 180 {
             self.games += 1;
         }
     }
