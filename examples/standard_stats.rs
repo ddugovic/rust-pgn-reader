@@ -48,15 +48,15 @@ impl Visitor for Stats {
             self.headers += 1;
             if _key == b"TimeControl" {
                 let bytes: &[u8] = _value.as_bytes();
-                if bytes[3] == b'+' {
-                    self.time = 60 * btou::<u16>(&bytes[0..3]).ok().unwrap();
-                    self.increment = btou(&bytes[4..]).ok().unwrap();
+                if bytes[1] == b'+' {
+                    self.time = 60 * btou::<u16>(&bytes[0..1]).ok().unwrap();
+                    self.increment = btou(&bytes[2..]).ok().unwrap();
                 } else if bytes[2] == b'+' {
                     self.time = 60 * btou::<u16>(&bytes[0..2]).ok().unwrap();
                     self.increment = btou(&bytes[3..]).ok().unwrap();
                 } else {
-                    self.time = 60 * btou::<u16>(&bytes[0..1]).ok().unwrap();
-                    self.increment = btou(&bytes[2..]).ok().unwrap();
+                    self.time = 60 * btou::<u16>(&bytes[0..3]).ok().unwrap();
+                    self.increment = btou(&bytes[4..]).ok().unwrap();
                 }
             }
             if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
