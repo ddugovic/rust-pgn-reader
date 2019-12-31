@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+use btoi::btou;
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
@@ -26,7 +27,7 @@ pub struct Skip(pub bool);
 
 /// A clock comment such as [%clk 0:01:00].
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct Clock(pub u8);
+pub struct Clock(pub u16);
 
 impl Clock {
     /// Tries to parse a Clock time from ASCII.
@@ -47,7 +48,7 @@ impl Clock {
     /// [`InvalidClock`]: struct.InvalidClock.html
     pub fn from_ascii(s: &[u8]) -> Result<Clock, InvalidClock> {
         if &s[0..7] == b" [%clk " {
-            btoi::btou(&s[12..13]).ok().map(Clock).ok_or(InvalidClock { _priv: () })
+            btou::<u16>(&s[9..11]).ok().map(|m| Clock(60 * m)).ok_or(InvalidClock { _priv: () })
         } else {
             Err(InvalidClock { _priv: () })
         }
@@ -62,8 +63,8 @@ impl fmt::Display for Clock {
     }
 }
 
-impl From<u8> for Clock {
-    fn from(clk: u8) -> Clock {
+impl From<u16> for Clock {
+    fn from(clk: u16) -> Clock {
         Clock(clk)
     }
 }
