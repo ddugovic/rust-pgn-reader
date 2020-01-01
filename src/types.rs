@@ -25,9 +25,14 @@ use std::str::{self, FromStr, Utf8Error};
 #[must_use]
 pub struct Skip(pub bool);
 
-/// A clock comment such as [%clk 0:05:00] with default value 0.
+/// A clock comment such as [%clk 0:00:00] with default value 0.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Clock(pub u16);
+
+/// https://stackoverflow.com/a/35907071/179741
+fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|window| window == needle)
+}
 
 impl Clock {
     /// Tries to parse a Clock time (less than 10 hours) from ASCII.
@@ -49,12 +54,13 @@ impl Clock {
     ///
     /// [`InvalidClock`]: struct.InvalidClock.html
     pub fn from_ascii(s: &[u8]) -> Result<Clock, InvalidClock> {
-        if &s[0..7] == b" [%clk " {
-            let minutes: u16 = 60 * btou::<u16>(&s[7..8]).ok().unwrap() +
-                                    btou::<u16>(&s[9..11]).ok().unwrap();
-            btou::<u16>(&s[12..14]).ok().map(|s| Clock(60 * minutes + s)).ok_or(InvalidClock { _priv: () })
-        } else {
-            Err(InvalidClock { _priv: () })
+        match find_subsequence(s, b"[%clk") {
+            Some(i) => {
+                let minutes: u16 = 60 * btou::<u16>(&s[(i+6)..(i+7)]).ok().unwrap() +
+                                        btou::<u16>(&s[(i+8)..(i+10)]).ok().unwrap();
+                btou::<u16>(&s[(i+11)..(i+13)]).ok().map(|s| Clock(60 * minutes + s)).ok_or(InvalidClock { _priv: () })
+            },
+            _ => Err(InvalidClock { _priv: () })
         }
     }
 }
@@ -346,7 +352,7 @@ mod tests {
     #[test]
     fn test_clock() {
         assert_eq!(Clock::from_ascii(b" [%clk 1:00:00] "), Ok(Clock(3600)));
-        assert_eq!(Clock::from_ascii(b" [%clk 0:05:00] "), Ok(Clock(300)));
+        assert_eq!(Clock::from_ascii(b" [%eval 0.1] [%clk 0:05:00] "), Ok(Clock(300)));
         assert_eq!(Clock::from_ascii(b" [%clk 0:00:15] "), Ok(Clock(15)));
     }
 
