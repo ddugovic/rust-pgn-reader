@@ -42,8 +42,8 @@ impl Visitor for Stats {
         self.turns = 0;
         self.time = 0;
         self.increment = 0;
-        self.wclock = Clock(0);
-        self.bclock = Clock(0);
+        self.wclock = Clock::default();
+        self.bclock = Clock::default();
         self.wlast = 0;
         self.blast = 0;
         self.timeout = false;
@@ -63,6 +63,12 @@ impl Visitor for Stats {
                 } else if bytes[3] == b'+' {
                     self.time = btou(&bytes[0..3]).ok().unwrap();
                     self.increment = btou(&bytes[4..]).ok().unwrap();
+                } else if bytes[4] == b'+' {
+                    self.time = btou(&bytes[0..4]).ok().unwrap();
+                    self.increment = btou(&bytes[5..]).ok().unwrap();
+                } else if bytes[5] == b'+' {
+                    self.time = btou(&bytes[0..5]).ok().unwrap();
+                    self.increment = btou(&bytes[6..]).ok().unwrap();
                 }
             }
         }
