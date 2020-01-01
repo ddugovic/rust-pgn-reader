@@ -37,7 +37,9 @@ impl Clock {
     /// ```
     /// use pgn_reader::Clock;
     ///
-    /// assert_eq!(Clock::from_ascii(b" [%clk 1:01:01] "), Ok(Clock(3661)));
+    /// assert_eq!(Clock::from_ascii(b" [%clk 1:00:00] "), Ok(Clock(3600)));
+    /// assert_eq!(Clock::from_ascii(b" [%clk 0:05:00] "), Ok(Clock(300)));
+    /// assert_eq!(Clock::from_ascii(b" [%clk 0:00:15] "), Ok(Clock(15)));
     /// ```
     ///
     /// # Errors
@@ -343,7 +345,9 @@ mod tests {
 
     #[test]
     fn test_clock() {
-        assert_eq!(Clock::from_ascii(b" [%clk 1:01:01] "), Ok(Clock(3661)));
+        assert_eq!(Clock::from_ascii(b" [%clk 1:00:00] "), Ok(Clock(3600)));
+        assert_eq!(Clock::from_ascii(b" [%clk 0:05:00] "), Ok(Clock(300)));
+        assert_eq!(Clock::from_ascii(b" [%clk 0:00:15] "), Ok(Clock(15)));
     }
 
     #[test]
