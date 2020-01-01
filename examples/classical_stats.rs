@@ -53,23 +53,12 @@ impl Visitor for Stats {
         self.headers += 1;
         if _key == b"TimeControl" {
             let bytes: &[u8] = _value.as_bytes();
-            if bytes.len() > 1 {
-                if bytes[1] == b'+' {
-                    self.time = btou(&bytes[0..1]).ok().unwrap();
-                    self.increment = btou(&bytes[2..]).ok().unwrap();
-                } else if bytes[2] == b'+' {
-                    self.time = btou(&bytes[0..2]).ok().unwrap();
-                    self.increment = btou(&bytes[3..]).ok().unwrap();
-                } else if bytes[3] == b'+' {
-                    self.time = btou(&bytes[0..3]).ok().unwrap();
-                    self.increment = btou(&bytes[4..]).ok().unwrap();
-                } else if bytes[4] == b'+' {
-                    self.time = btou(&bytes[0..4]).ok().unwrap();
-                    self.increment = btou(&bytes[5..]).ok().unwrap();
-                } else if bytes[5] == b'+' {
-                    self.time = btou(&bytes[0..5]).ok().unwrap();
-                    self.increment = btou(&bytes[6..]).ok().unwrap();
-                }
+            match bytes.iter().position(|&x| x == b'+') {
+                Some(i) => {
+                    self.time = btou(&bytes[0..i]).ok().unwrap();
+                    self.increment = btou(&bytes[(i+1)..]).ok().unwrap();
+                },
+                _ => {}
             }
         }
         if self.time + 40 * self.increment >= 1500 {
