@@ -66,7 +66,7 @@ impl Visitor for Stats {
                 }
             }
         }
-        if self.time + 40 * self.increment >= 480 {
+        if self.time + 40 * self.increment >= 1500 {
             if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
                 self.timeout = true;
                 self.timeouts += 1;
@@ -75,7 +75,7 @@ impl Visitor for Stats {
     }
 
     fn end_headers(&mut self) -> Skip {
-        Skip((self.time + 40 * self.increment) < 480 || !self.timeout)
+        Skip((self.time + 40 * self.increment) < 1500 || !self.timeout)
     }
 
     fn san(&mut self, _san: SanPlus) {
@@ -129,7 +129,7 @@ impl Visitor for Stats {
     }
 
     fn end_game(&mut self) {
-        if self.time + 40 * self.increment >= 480 {
+        if self.time + 40 * self.increment >= 1500 {
             self.games += 1;
         }
     }
