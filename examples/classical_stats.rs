@@ -17,6 +17,7 @@ struct Stats {
     comments: usize,
     variations: usize,
     timeouts: usize,
+    quits: usize,
     decisions: usize,
     outcomes: usize,
     time: u16,
@@ -27,6 +28,7 @@ struct Stats {
     wlast: u16,
     blast: u16,
     timeout: bool,
+    quit: bool,
 }
 
 impl Stats {
@@ -47,6 +49,7 @@ impl Visitor for Stats {
         self.wlast = 0;
         self.blast = 0;
         self.timeout = false;
+        self.quit = false;
     }
 
     fn header(&mut self, _key: &[u8], _value: RawHeader<'_>) {
@@ -84,7 +87,8 @@ impl Visitor for Stats {
 
     fn comment(&mut self, _comment: RawComment<'_>) {
         self.comments += 1;
-        let clock = Clock::from_ascii(_comment.as_bytes());
+        let bytes = _comment.as_bytes();
+        let clock = Clock::from_ascii(bytes);
         if clock.is_ok() {
             if self.turns % 2 == 1 {
                 let t = self.wclock.0 + self.increment;
@@ -99,6 +103,9 @@ impl Visitor for Stats {
                     self.blast = t - self.bclock.0;
                 }
             }
+        } else if bytes == b" White left the game. " || bytes == b" Black left the game. " {
+            self.quit = true;
+            self.quits += 1;
         }
     }
 
@@ -117,9 +124,9 @@ impl Visitor for Stats {
         };
         if self.timeout {
             let t: u16 = (self.time + 40 * self.increment) / 12;
-            let w: char = if self.turns % 2 == 0 && (t < self.wclock.0 || t < self.wlast) {'*'} else {' '};
-            let b: char = if self.turns % 2 == 1 && (t < self.bclock.0 || t < self.blast) {'*'} else {' '};
-            println!("{:3}+{:2} (t={:3}): {}wtime={:5} wlast={:3}  {}btime={:5} blast={:3}  turns={:3}", self.time/60, self.increment, t, w, self.wclock.0, self.wlast, b, self.bclock.0, self.blast, self.turns);
+            let w: char = if self.quit {'*'} else if self.turns % 2 == 0 && (t < self.wclock.0 || t < self.wlast) {'!'} else {' '};
+            let b: char = if self.quit {'*'} else if self.turns % 2 == 1 && (t < self.bclock.0 || t < self.blast) {'!'} else {' '};
+            println!("{:3}+{:3} (t={:3}): {}wtime={:5} wlast={:3}  {}btime={:5} blast={:3}  turns={:3}", self.time/60, self.increment, t, w, self.wclock.0, self.wlast, b, self.bclock.0, self.blast, self.turns);
         }
     }
 
