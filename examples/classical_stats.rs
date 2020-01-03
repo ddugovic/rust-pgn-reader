@@ -23,6 +23,8 @@ struct Stats {
     time: u16,
     increment: u16,
     turns: u16,
+    wrating: u16,
+    brating: u16,
     wclock: Clock,
     bclock: Clock,
     wlast: u16,
@@ -44,6 +46,8 @@ impl Visitor for Stats {
         self.turns = 0;
         self.time = 0;
         self.increment = 0;
+        self.wrating = 0;
+        self.brating = 0;
         self.wclock = Clock::default();
         self.bclock = Clock::default();
         self.wlast = 0;
@@ -63,6 +67,10 @@ impl Visitor for Stats {
                 },
                 _ => {}
             }
+        } else if _key == b"WhiteElo" {
+            self.wrating = btou(_value.as_bytes()).ok().unwrap();
+        } else if _key == b"BlackElo" {
+            self.brating = btou(_value.as_bytes()).ok().unwrap();
         }
         if self.time + 40 * self.increment >= 1500 {
             if _key == b"Termination" && _value.as_bytes() == b"Time forfeit" {
@@ -126,7 +134,7 @@ impl Visitor for Stats {
             let t: u16 = (self.time + 40 * self.increment) / 12;
             let w: char = if self.quit {'*'} else if self.turns % 2 == 0 && (t < self.wclock.0 || t < self.wlast) {'!'} else {' '};
             let b: char = if self.quit {'*'} else if self.turns % 2 == 1 && (t < self.bclock.0 || t < self.blast) {'!'} else {' '};
-            println!("{:3}+{:3} (t={:3}): {}wtime={:5} wlast={:3}  {}btime={:5} blast={:3}  turns={:3}", self.time/60, self.increment, t, w, self.wclock.0, self.wlast, b, self.bclock.0, self.blast, self.turns);
+            println!("{:3}+{:3} (t={:3}): {}welo={:4} wtime={:5} wlast={:3}  {}belo={:4} btime={:5} blast={:3}  turns={:3}", self.time/60, self.increment, t, w, self.wrating, self.wclock.0, self.wlast, b, self.brating, self.bclock.0, self.blast, self.turns);
         }
     }
 
