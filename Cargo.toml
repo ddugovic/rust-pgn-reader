@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 memchr = "2.2"
 btoi = "0.5"
-shakmaty = "0.27"
+shakmaty = "0.28"
 slice-deque = "0.3"
 
 [dev-dependencies]
